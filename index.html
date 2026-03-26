@@ -775,36 +775,6 @@ function extractJSON(str) {
   return null;
 }
 
-async function callGemini(payload) {
-  const GKEY = 'AIzaSyDhfbUCg95VbsbSnozJsT3WekHa8PnwGcQ';
-  const res = await fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+GKEY,
-    { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) }
-  );
-  if(!res.ok) throw new Error('Error Gemini: '+res.status);
-  const d = await res.json();
-  if(d.error) throw new Error(d.error.message||JSON.stringify(d.error));
-  if(!d.candidates||!d.candidates[0]) throw new Error('Sin respuesta de Gemini');
-  return d.candidates[0].content.parts[0].text;
-}
-
-async function geminiText(prompt) {
-  return callGemini({
-    contents:[{role:'user', parts:[{text:prompt}]}],
-    generationConfig:{maxOutputTokens:2000, temperature:0.1}
-  });
-}
-
-async function geminiVision(base64, mime, prompt) {
-  return callGemini({
-    contents:[{role:'user', parts:[
-      {inline_data:{mime_type:mime, data:base64}},
-      {text:prompt}
-    ]}],
-    generationConfig:{maxOutputTokens:2000, temperature:0.1}
-  });
-}
-
 // ══════════════════════════════════════════
 //  STATE & PERSISTENCE
 // ══════════════════════════════════════════
