@@ -2217,7 +2217,7 @@ function notif(msg) {
   const el=document.createElement('div'); el.className='notif'; el.textContent=msg;
   document.body.appendChild(el); setTimeout(()=>el.remove(),3300);
 }
-  async function enviarIA(mensaje) {
+async function enviarIA(mensaje) {
   const res = await fetch("https://plantukis-ia.viverobernati.workers.dev/", {
     method: "POST",
     headers: {
@@ -2229,7 +2229,13 @@ function notif(msg) {
   });
 
   const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(JSON.stringify(data));
+  }
+
   return data.text || "Sin respuesta";
+}
 }
 </script>
 </body>
