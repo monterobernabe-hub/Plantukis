@@ -775,6 +775,36 @@ function extractJSON(str) {
   return null;
 }
 
+async function callGemini(payload) {
+  const GKEY = 'AIzaSyDhfbUCg95VbsbSnozJsT3WekHa8PnwGcQ';
+  const res = await fetch(
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+GKEY,
+    { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) }
+  );
+  if(!res.ok) throw new Error('Error Gemini: '+res.status);
+  const d = await res.json();
+  if(d.error) throw new Error(d.error.message||JSON.stringify(d.error));
+  if(!d.candidates||!d.candidates[0]) throw new Error('Sin respuesta de Gemini');
+  return d.candidates[0].content.parts[0].text;
+}
+
+async function geminiText(prompt) {
+  return callGemini({
+    contents:[{role:'user', parts:[{text:prompt}]}],
+    generationConfig:{maxOutputTokens:2000, temperature:0.1}
+  });
+}
+
+async function geminiVision(base64, mime, prompt) {
+  return callGemini({
+    contents:[{role:'user', parts:[
+      {inline_data:{mime_type:mime, data:base64}},
+      {text:prompt}
+    ]}],
+    generationConfig:{maxOutputTokens:2000, temperature:0.1}
+  });
+}
+
 // ══════════════════════════════════════════
 //  STATE & PERSISTENCE
 // ══════════════════════════════════════════
@@ -2133,32 +2163,31 @@ Responde de forma clara y práctica. Usa tablas cuando sea útil. Si generas lib
 async function sendMsg() {
   const input = document.getElementById('chat-input');
   const text = input.value.trim();
-  if (!text) return;
-
+  if(!text) return;
   addMsg('user', text);
-  input.value = '';
-  document.getElementById('btn-send').disabled = true;
+  input.value='';
+  document.getElementById('btn-send').disabled=true;
+  S.chatHist.push({role:'user',content:text});
 
-  const loadId = 'ld-' + Date.now();
-  const ldiv = document.createElement('div');
-  ldiv.className = 'msg assistant';
-  ldiv.id = loadId;
-  ldiv.innerHTML = `<div class="av">🌿</div><div class="bubble"><div class="dots"><span></span><span></span><span></span></div></div>`;
+  const loadId='ld-'+Date.now();
+  const ldiv=document.createElement('div');
+  ldiv.className='msg assistant'; ldiv.id=loadId;
+  ldiv.innerHTML=`<div class="av">🌿</div><div class="bubble"><div class="dots"><span></span><span></span><span></span></div></div>`;
   document.getElementById('chat-msgs').appendChild(ldiv);
   scrollChat();
 
   try {
-    const respuesta = await enviarIA(text);
-
+    const sysPrompt = buildSys();
+    const fullPrompt = sysPrompt + '\n\nPregunta: ' + S.chatHist[S.chatHist.length-1].content;
+    const reply = await geminiText(fullPrompt);
+    S.chatHist.push({role:'assistant',content:reply});
     document.getElementById(loadId)?.remove();
-    addMsg('assistant', respuesta);
-  } catch (err) {
+    addMsg('assistant', reply);
+  } catch(e) {
     document.getElementById(loadId)?.remove();
-    addMsg('assistant', 'Error al conectar con IA');
-    console.error(err);
-  } finally {
-    document.getElementById('btn-send').disabled = false;
+    addMsg('assistant','⚠️ Error de conexión. Intenta de nuevo.');
   }
+  document.getElementById('btn-send').disabled=false;
 }
 
 function addMsg(role, text) {
@@ -2186,26 +2215,6 @@ function renderAll() {
 function notif(msg) {
   const el=document.createElement('div'); el.className='notif'; el.textContent=msg;
   document.body.appendChild(el); setTimeout(()=>el.remove(),3300);
-}
-async function enviarIA(mensaje) {
-  const res = await fetch("https://plantukis-ia.viverobernati.workers.dev/", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      message: mensaje
-    })
-  });
-
-  const data = await res.json();
-
-  if (!res.ok) {
-    throw new Error(JSON.stringify(data));
-  }
-
-  return data.text || "Sin respuesta";
-}
 }
 </script>
 </body>
