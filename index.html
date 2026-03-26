@@ -1924,15 +1924,21 @@ function actInv(nombre,cantidad,costo) {
 
 async function procesarWA() {
   const texto = document.getElementById('wa-input').value.trim();
-  if(!texto) { notif('⚠️ Escribe un mensaje primero'); return; }
+  if (!texto) {
+    notif('⚠️ Escribe un mensaje primero');
+    return;
+  }
 
-  document.getElementById('wa-status').innerHTML='<span class="dots"><span></span><span></span><span></span></span> Procesando...';
+  document.getElementById('wa-status').innerHTML =
+    '<span class="dots"><span></span><span></span><span></span></span> Procesando...';
 
-  // Usar precios del inventario (más actualizados), fallback al catálogo
   const precioMap = {};
-  S.catalogo.forEach(p=>{ if(p.precio>0) precioMap[p.nombre]=p.precio; });
-  S.inv.forEach(p=>{ if(p.precio>0) precioMap[p.nombre]=p.precio; }); // inv sobreescribe catálogo
-  const catNames = Object.entries(precioMap).map(([n,p])=>`${n}:$${p}`).join(', ') || 'Sin catálogo aún';
+  S.catalogo.forEach(p => { if (p.precio > 0) precioMap[p.nombre] = p.precio; });
+  S.inv.forEach(p => { if (p.precio > 0) precioMap[p.nombre] = p.precio; });
+
+  const catNames = Object.entries(precioMap)
+    .map(([n, p]) => `${n}:$${p}`)
+    .join(', ') || 'Sin catálogo aún';
 
   try {
     const waPrompt = `Eres contador de un vivero chileno EIRL. Interpreta este mensaje y extrae datos para registro contable.
@@ -1945,25 +1951,31 @@ Responde SOLO con JSON válido sin markdown:
 IMPORTANTE: Para ventas con VARIOS productos, crea UN objeto en lineas[] por cada producto.
 Ejemplo "3 sustratos 1 guano": lineas:[{"nombre":"Sustrato","cantidad":3,"precio":1000,"subtotal":3000},{"nombre":"Guano","cantidad":1,"precio":3000,"subtotal":3000}]
 Para gastos usa proveedor y cat. Usa precios del catálogo si coincide.`;
+
     const rawText = await enviarIA_JSON(waPrompt);
-    // Clean and extract balanced JSON
+
     const cleanRaw = rawText
-      .replace(/```json|```/g,'')
-      .replace(/\r\n|\r|\n/g,' ')
-      .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g,'')
-      .replace(/\s+/g,' ')
+      .replace(/```json|```/g, '')
+      .replace(/\r\n|\r|\n/g, ' ')
+      .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '')
+      .replace(/\s+/g, ' ')
       .trim();
+
     const jsonStr = extractJSON(cleanRaw);
-    if(!jsonStr) throw new Error('Gemini sin JSON: ' + rawText.substring(0,200));
+    if (!jsonStr) throw new Error('La IA no devolvió JSON válido');
+
     let parsed;
     try {
       parsed = JSON.parse(jsonStr);
-    } catch(e) { throw new Error('JSON WA inválido: ' + e.message); }
+    } catch (e) {
+      throw new Error('JSON WA inválido: ' + e.message);
+    }
+
     S.pendingWA = parsed;
     mostrarWAResult(parsed);
-    document.getElementById('wa-status').textContent='✅ Interpretado correctamente';
-  } catch(e) {
-    document.getElementById('wa-status').textContent='⚠️ Error: ' + e.message;
+    document.getElementById('wa-status').textContent = '✅ Interpretado correctamente';
+  } catch (e) {
+    document.getElementById('wa-status').textContent = '⚠️ Error: ' + e.message;
     console.error('WA error:', e);
   }
 }
@@ -2157,12 +2169,13 @@ Responde de forma clara y práctica. Usa tablas cuando sea útil. Si generas lib
 async function sendMsg() {
   const input = document.getElementById('chat-input');
   const text = input.value.trim();
-  if(!text) return;
+  if (!text) return;
 
   addMsg('user', text);
   input.value = '';
   document.getElementById('btn-send').disabled = true;
-  S.chatHist.push({role:'user', content:text});
+
+  S.chatHist.push({ role: 'user', content: text });
 
   const loadId = 'ld-' + Date.now();
   const ldiv = document.createElement('div');
@@ -2176,16 +2189,17 @@ async function sendMsg() {
     const sysPrompt = buildSys();
     const fullPrompt = sysPrompt + '\n\nPregunta: ' + text;
     const reply = await enviarIA_JSON(fullPrompt);
-    S.chatHist.push({role:'assistant', content:reply});
+
+    S.chatHist.push({ role: 'assistant', content: reply });
     document.getElementById(loadId)?.remove();
     addMsg('assistant', reply);
-  } catch(e) {
+  } catch (e) {
     document.getElementById(loadId)?.remove();
     addMsg('assistant', '⚠️ Error de conexión. Intenta de nuevo.');
     console.error('Contador IA error:', e);
-  } finally {
-    document.getElementById('btn-send').disabled = false;
   }
+
+  document.getElementById('btn-send').disabled = false;
 }
 
 function addMsg(role, text) {
@@ -2213,6 +2227,25 @@ function renderAll() {
 function notif(msg) {
   const el=document.createElement('div'); el.className='notif'; el.textContent=msg;
   document.body.appendChild(el); setTimeout(()=>el.remove(),3300);
+}
+  async function enviarIA_JSON(mensaje) {
+  const res = await fetch("https://plantukis-ia.viverobernati.workers.dev/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      message: mensaje
+    })
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data?.error || data?.details || JSON.stringify(data));
+  }
+
+  return data.text || "Sin respuesta";
 }
 </script>
 </body>
