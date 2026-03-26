@@ -2163,31 +2163,32 @@ Responde de forma clara y práctica. Usa tablas cuando sea útil. Si generas lib
 async function sendMsg() {
   const input = document.getElementById('chat-input');
   const text = input.value.trim();
-  if(!text) return;
-  addMsg('user', text);
-  input.value='';
-  document.getElementById('btn-send').disabled=true;
-  S.chatHist.push({role:'user',content:text});
+  if (!text) return;
 
-  const loadId='ld-'+Date.now();
-  const ldiv=document.createElement('div');
-  ldiv.className='msg assistant'; ldiv.id=loadId;
-  ldiv.innerHTML=`<div class="av">🌿</div><div class="bubble"><div class="dots"><span></span><span></span><span></span></div></div>`;
+  addMsg('user', text);
+  input.value = '';
+  document.getElementById('btn-send').disabled = true;
+
+  const loadId = 'ld-' + Date.now();
+  const ldiv = document.createElement('div');
+  ldiv.className = 'msg assistant';
+  ldiv.id = loadId;
+  ldiv.innerHTML = `<div class="av">🌿</div><div class="bubble"><div class="dots"><span></span><span></span><span></span></div></div>`;
   document.getElementById('chat-msgs').appendChild(ldiv);
   scrollChat();
 
   try {
-    const sysPrompt = buildSys();
-    const fullPrompt = sysPrompt + '\n\nPregunta: ' + S.chatHist[S.chatHist.length-1].content;
-    const reply = await geminiText(fullPrompt);
-    S.chatHist.push({role:'assistant',content:reply});
+    const respuesta = await enviarIA(text);
+
     document.getElementById(loadId)?.remove();
-    addMsg('assistant', reply);
-  } catch(e) {
+    addMsg('assistant', respuesta);
+  } catch (err) {
     document.getElementById(loadId)?.remove();
-    addMsg('assistant','⚠️ Error de conexión. Intenta de nuevo.');
+    addMsg('assistant', 'Error al conectar con IA');
+    console.error(err);
+  } finally {
+    document.getElementById('btn-send').disabled = false;
   }
-  document.getElementById('btn-send').disabled=false;
 }
 
 function addMsg(role, text) {
@@ -2216,6 +2217,21 @@ function notif(msg) {
   const el=document.createElement('div'); el.className='notif'; el.textContent=msg;
   document.body.appendChild(el); setTimeout(()=>el.remove(),3300);
 }
+  async function enviarIA(mensaje) {
+  const res = await fetch("https://plantukis-ia.viverobernati.workers.dev/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      message: mensaje
+    })
+  });
+
+  const data = await res.json();
+  return data.text || "Sin respuesta";
+}
 </script>
 </body>
 </html>
+
