@@ -1921,7 +1921,7 @@ Responde SOLO con JSON válido sin markdown:
 IMPORTANTE: Para ventas con VARIOS productos, crea UN objeto en lineas[] por cada producto.
 Ejemplo "3 sustratos 1 guano": lineas:[{"nombre":"Sustrato","cantidad":3,"precio":1000,"subtotal":3000},{"nombre":"Guano","cantidad":1,"precio":3000,"subtotal":3000}]
 Para gastos usa proveedor y cat. Usa precios del catálogo si coincide.`;
-    const rawText = await geminiText(waPrompt);
+    const rawText = await enviarIA_JSON(waPrompt);
     // Clean and extract balanced JSON
     const cleanRaw = rawText
       .replace(/```json|```/g,'')
